@@ -51,11 +51,11 @@ Where we have the match id, the player’s side, game result, game duration, gam
 
 ##Analysis plan
 
-To process the data, we first removed data from players who have played for shorter than two months. These players were often new to the game and thus were unstable and can be unpredictable when it comes to why they quitted the game. To better model the population, we removed data points from these players from the data set. 
+To process the data, we first removed data from players who have played for shorter than two months. These players were often new to the game and thus were less convincing with few available data, and it can be unpredictable when it comes to why they quitted the game. When summarizing the orginal data, the majority of the new players appeared as outliers. To better model the factors contributing to chance of quiting, we removed data points from these players from the data set. 
 
-We then calculate the performance dependent variables – one set of variables for each player. Specifically, the performance dependent variables include average kills, average deaths, average assists, average game duration, average winning percentage, hero selection diversity (i.e., we counted the number of unrepeated heroes selected by that user), average game finish rate, game frequency (i.e., number of games per week), game history (i.e., total number of weeks playing DotA2), number of games (i.e., total number of games played), number of weeks not played since the last game.
+We then calculated the "performance" dependent variables – one set of variables for each player. Specifically, the variables set included average kills, average deaths, average assists, average game duration, average winning percentage, hero selection diversity (i.e., we counted the number of unrepeated heroes selected by that user), average game finish rate, game frequency (i.e., number of games per week), game history (i.e., total number of weeks playing DotA2), number of games (i.e., total number of games played), number of weeks not played since the last game (for judging the chance of quiting).
 
-We also want to pay attention to that player’s last period of game play before she quitted the game. For example, we calculated Z-scores of performance characteristics (e.g., kills/deaths/assists) of the player against her average performance throughout her entire gaming history. We also calculated the average performance characteristics of the player’s last period of game play such as winning percentage, game finish rate, and game frequency. In our data processing, we defined the last week and the last month as the last period of game play. The above characteristics are calculated for the last week and the last month respectively.
+We also want to pay attention to that player’s last period of game play before she quitted the game, because the latest performance of the player may highly influence her decison of quitting or not. Say, if the player had a losing streak before she quitted, it is highly due to her low winning rate during that period. To introduce the significance of "last period performance", we calculated Z-scores of performance characteristics (e.g., kills/deaths/assists) of the player against her average performance throughout her entire gaming history. We also calculated the average performance characteristics of the player’s last period of game play such as winning percentage, game finish rate, and game frequency. In our data processing, we defined the both last week and the last month as the last period of game play. The above characteristics are calculated for the last week and the last month respectively.
 
 Table 1. shows all dependent variables we calculated:
 
@@ -129,7 +129,7 @@ hist(first_20$GameHistory,
 
 ```
 
-We can see from these plots that the total number of games played by each player and the number of games per week are more like normal distributions however with only one tail on the right. The mojority of players play 0-3000 games in our samples, while most of the players play 3-15 games every week. This indicates a log transformation might be needed for these dependent variables. However, for the number of weeks for the total DotA play, we did not see a normal distribution. 
+We can see from these plots that the total number of games played by each player and the number of games per week likely have normal distributions however with only right long tail (we need to keep our variables greater than 0). The majority of players play 0-3000 games in our samples, while most of the players play 3-15 games every week. This indicates a log transformation might be needed for these dependent variables. However, as for the number of weeks for the total DotA play, we did not see certain distribution. If we include this factor into our regression model, it may violate our model residuals.
 
 
 ```{r summary2, message = F, echo = F}
@@ -161,7 +161,7 @@ hist(first_20$AverageDuration,
 
 ```
 
-From the above histograms we can see clearly a normal distribution for the average winning percentage and average duration. In fact, the DotA2 platform automatically adjust the game difficulty for a player through e.g., matching the player with opponents with different levels to control the winning percentage to be 50%. The finish rate and the hero selection diversity have also normal distributions but the right tails are limited by the upper boundary. As we can see that most of the players have a game finish rate between 85% to 100%. And most of the players have used more than 100 heroes during her game play history.
+From the above histograms we can see clearly a normal distribution for the average winning percentage and average duration. In fact, the DotA2 platform automatically adjust the game difficulty for a player through e.g., matching the player with opponents with different levels to control the winning percentage to be 50%. The extreme cases for low or high winning case maybe due to the players intensions, say, using primary-level account to hide her actual strength. The finish rate and the hero selection diversity have also normal distributions but the right tails are limited by the upper boundary. As we can see that most of the players have a game finish rate between 85% to 100%. Dota2 will punish the players consequent disconnection from the game, thus, players are required to maintain their finish rate at certain level from “low-priority”. It is an interesting rule because once the player enters the "low-priority" mode, she needs to win the game with restriction. The process of leaving "low-priority" status is usually suffering, which indicates that it may drive the players to quit the game after they are "restricted". And most of the players have used more than 100 heroes during her game play history.
 
 
 ```{r summary3, message = F, echo = F}
@@ -224,7 +224,7 @@ colnames(t) <- c("Quitted?","Frequency")
 
 To avoid having an imbalanced data set, we randomly down sampled the active player to match the number of the inactive players and move on to the next stage.
 
-The most intuitive model is merely using winning percentage as the independent variable. A player might lose interests in the game simply because she lost to many games, which can be reflected in the winning percentage. So we first build logistic regressions based on average winning percentage, last week winning percentage, last month winning percentage, and the difference between average and last week winning percentage, and the difference between average and last month winning percentage. We set a threshold of 50% on the probability outputted by the model to predict if a player is inactive. We calculate the prediction accuracies which are show in the table below:
+The most intuitive model is merely using winning percentage as the independent variable. A player might lose interests in the game simply because she lost too many games, which can be reflected in the winning percentage. So we first build logistic regressions based on average winning percentage, last week winning percentage, last month winning percentage, and the difference between average and last week winning percentage, and the difference between average and last month winning percentage. We set a threshold of 50% on the probability outputted by the model to predict if a player is inactive. We calculate the prediction accuracies which are show in the table below:
 
 
 ```{r models, message = F, echo = F}
@@ -269,7 +269,7 @@ kable(modelstats)
 
 ```
 
-This result indicates that the winning percentage along cannot well predict if a user is likely to quit the game since the prediction accuracy is almost the same as prior possibility (i.e. 50%). We then select more independent variables, build the following model and evaluate their accuracies. Specifically, we build logistic regression models based on 1) only last period statistics, 2) only all period statistics, 3) combined statistics (all statistics). The prediction performance is shown in the table below:
+This result indicates that the winning percentage alone cannot well predict if a user is likely to quit the game, since the prediction accuracy is almost the same as prior possibility (i.e. 50%). The starting model is not a good model at all, there must be omitted variables when doing the regression. We then select more independent variables, build the following model and evaluate their accuracies. Specifically, we build logistic regression models based on 1) only last period statistics, 2) only all period statistics, 3) combined statistics (all statistics). The prediction performance is shown in the table below:
 
 ```{r models2, message = F, echo = F}
 glm_all_diff <- glm(ActiveNumeric ~ LWZKills + LWZDeaths + LWZAssists + LWZDuration + LMZKills + LMZDeaths + LMZAssists + LMZDuration + DiffLWWinningPercentage + DiffLWWinningPercentage + DiffLWGameFrequency + DiffLMGameFrequency + DiffLWGameFinishRate + DiffLMGameFinishRate, data = down_train, family = binomial(link = "logit"))
@@ -308,7 +308,7 @@ $$ \\log{(\frac{p(x)}{1-p(x)})} =\beta_0 + (\beta_1 * AverageAssists)+(\beta_2 *
 $$  (\beta_4 * log(GameFrequency))+ (\beta_5 * GameHistory) + (\beta_6 * HeroSelectionDiversity)+(\beta_7 * STDKills) + $$
 $$ (\beta_8 * STDAssists) + (\beta_9 * LWZKills)+(\beta_{10} * LWZAssists) + (\beta_{11} * LMZAssists) +  (\beta_{12} * DiffLMGameFrequency)$$
 
-We also run a predicion evaluation using the exploritary data and the result is shown in the above table. As we can see the prediction accuracy of this model is roughtly as good as the all combined model. So we selected this model to move on to the validation phase.
+We also run a predicion evaluation using the exploritary data and the result is shown in the above table. As we can see the prediction accuracy of this model is roughly as good as the all combined model. Using model with all data available has a higher cost but approxinately similar result, so we selected the reduced model to move on to the validation phase.
 
 ```{r validation, message = F, echo = T}
 folds <- rep(1:5, length.out = nrow(second_60))
@@ -342,7 +342,7 @@ accuracy <- c(0,0,0,0,0)
 
 ```
 
-The 5-fold cross-validation shows an average predication accuracy of 0.858 with a standard deviation of 0.005. 
+The 5-fold cross-validation shows an average prediction accuracy of 0.858 with a standard deviation of 0.005. 
 
 Finally, we combine the exploratory and the validation dataset to train a final model, while using the rest 20% of all data points as the test set. The result is shown as follows.
 
@@ -391,7 +391,7 @@ In addition, longer game history, higher hero selection diversity, higher varian
 
 Finally, we found more kills, assists in the last week, more assists in the last month, and less game play frequency in the last month all indicate a higher possibility of game quitting.
 
-## Limination
+## Limitation
 
 Though we got a model that can predict the chance of players quitting the game fairly well, we are aware of the statistical inference and the causality problems that our current model might have. For example, the players we sampled using the Open DotA API might not be randomly sampled, and they can for sure not represent players of other online games. When it comes to the causality, we might also have reverse causality problem between the Number of Game variable and the possibility of quitting the game. A player might decide to stay in the game because she has played so many games. Or it is also possible that the decision to stay in the game causes a higher number of game played. 
 
